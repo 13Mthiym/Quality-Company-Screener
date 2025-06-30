@@ -15,27 +15,80 @@ def find_financial_statement_key(df_index, preferred_keys, default_key=None):
     return default_key if default_key else (preferred_keys[0] if preferred_keys else None)
 
 def get_sp500_tickers():
+    """
+    Retrieves the list of S&P 500 tickers from stockanalysis.com.
+    Falls back to a hardcoded list if the fetch fails.
+    """
     try:
-        url = 'https://en.wikipedia.org/wiki/List_of_S&P_500_companies'
-        headers = {'User-Agent': 'Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:100.0) Gecko/20100101 Firefox/100.0'}
-        response = requests.get(url, headers=headers, timeout=10)
-        response.raise_for_status()
-        tables = pd.read_html(response.text, flavor='lxml')
-        sp500_df = tables[0]
+        # The new, more reliable URL
+        url = 'https://stockanalysis.com/list/sp-500-stocks/'
 
-        symbol_col_name = 'Symbol'
-        if 'Symbol' not in sp500_df.columns:
-            potential_symbol_cols = [col for col in sp500_df.columns if 'symbol' in col.lower() or 'ticker' in col.lower()]
-            if not potential_symbol_cols: raise ValueError("Symbol column missing")
-            symbol_col_name = potential_symbol_cols[0]
+        # Using headers to mimic a browser visit
+        headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'}
 
-        tickers = sp500_df[symbol_col_name].astype(str).tolist()
-        tickers = [ticker.replace('.', '-') for ticker in tickers]
-        tickers = [ticker if ticker != 'BF-B' else 'BF.B' for ticker in tickers]
-        print(f"Successfully retrieved {len(tickers)} S&P 500 tickers.")
-        return tickers
+        # Using pandas to read the HTML table directly from the URL
+        response = requests.get(url, headers=headers)
+        response.raise_for_status() # Check for HTTP errors
+        sp500_df_list = pd.read_html(response.text)
+
+        if not sp500_df_list:
+            raise ValueError("No tables found on the page.")
+        sp500_df = sp500_df_list[0] # Assuming the first table is the correct one
+
+        # The 'Symbol' column contains the tickers
+        if 'Symbol' in sp500_df.columns:
+            tickers = sp500_df['Symbol'].astype(str).tolist()
+            # Clean up tickers for yfinance compatibility
+            # General rule: yfinance often uses '-' where sources use '.' (e.g. BRK-B vs BRK.B)
+            # However, for specific ones like BRK.B and BF.B, yfinance expects the '.'
+
+            # Start with a general replacement for other cases if any (though S&P500 usually doesn't have many dots)
+            # tickers = [ticker.replace('.', '-') for ticker in tickers] # This might be too broad
+
+            # Specific known adjustments for yfinance:
+            # BF.B is often listed as BF-B elsewhere
+            # BRK.B is often listed as BRK-B elsewhere
+
+            # Correcting based on common yfinance usage:
+            # yfinance needs BRK.B (not BRK-B from some sources)
+            # yfinance needs BF.B (not BF-B from some sources)
+            # Most other S&P500 tickers are simple, no dots or dashes.
+
+            # A better approach for cleaning:
+            cleaned_tickers = []
+            for ticker in tickers:
+                if ticker == 'BRK-B': # If source gives BRK-B
+                    cleaned_tickers.append('BRK.B')
+                elif ticker == 'BF-B': # If source gives BF-B
+                    cleaned_tickers.append('BF.B')
+                # Add other specific known transformations if they arise for stockanalysis.com
+                else:
+                    # For most S&P500 tickers, no change or simple dot removal is needed.
+                    # stockanalysis.com seems to provide clean tickers like "GOOGL", "AAPL"
+                    # If a ticker like "ABC.N" appeared, yfinance might need "ABC" or "ABC-N".
+                    # For now, assume stockanalysis.com provides symbols yfinance mostly understands directly,
+                    # apart from the specific cases above.
+                    cleaned_tickers.append(ticker.replace('.', '-')) # General case for other potential dots from source
+
+            # Re-apply specific known yfinance preferences after general cleaning
+            final_tickers = []
+            for ticker in cleaned_tickers:
+                if ticker == 'BRK-B': # Ensure it is BRK.B for yfinance
+                    final_tickers.append('BRK.B')
+                elif ticker == 'BF-B':  # Ensure it is BF.B for yfinance
+                    final_tickers.append('BF.B')
+                else:
+                    final_tickers.append(ticker)
+
+
+            print(f"Successfully retrieved {len(final_tickers)} S&P 500 tickers from stockanalysis.com.")
+            return final_tickers
+        else:
+            raise ValueError("The 'Symbol' column was not found on the page.")
+
     except Exception as e:
-        print(f"Error retrieving S&P 500 tickers: {e}. Using fallback.")
+        print(f"Error retrieving S&P 500 tickers from stockanalysis.com: {e}. Using fallback.")
+        # The fallback list remains a good safety net
         return ['AAPL', 'MSFT', 'GOOGL', 'AMZN', 'NVDA', 'TSLA', 'JPM', 'V', 'JNJ', 'XOM', 'MMM', 'NEE']
 
 def get_financial_data(tickers, years=10):

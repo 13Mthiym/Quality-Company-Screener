@@ -23,16 +23,20 @@ def run_full_workflow(tickers_to_fetch=None, data_years=5):
     raw_data_path = 'sp500_financial_data.csv'
 
     if tickers_to_fetch is None:
-        # Default to a small sample for quicker execution of the main script
-        # For a full S&P 500 run, this list would be much larger.
-        tickers_to_fetch = ['AAPL', 'MSFT', 'GOOGL', 'JPM', 'XOM', 'NEE', 'MMM', 'DIS', 'LLY', 'NVDA']
-        # To run for all S&P 500, one might uncomment the following:
-        # tickers_to_fetch = data_acquisition.get_sp500_tickers()
-        # if not tickers_to_fetch:
-        #     print("Failed to retrieve S&P 500 tickers. Exiting workflow.")
-        #     return
-        # print(f"Proceeding with {len(tickers_to_fetch)} tickers (Sample or Full S&P 500).")
-        print(f"Proceeding with a sample of {len(tickers_to_fetch)} tickers: {tickers_to_fetch[:5]}...")
+        print("No specific tickers provided, attempting to fetch S&P 500 list...")
+        tickers_to_fetch = data_acquisition.get_sp500_tickers()
+        if not tickers_to_fetch:
+            print("Failed to retrieve S&P 500 tickers. Exiting workflow.")
+            return
+        # Limit to a sample from the fetched list for quicker execution of the main script
+        sample_size = 10
+        if len(tickers_to_fetch) > sample_size:
+            tickers_to_fetch = tickers_to_fetch[:sample_size]
+            print(f"Proceeding with the first {sample_size} tickers from the fetched S&P 500 list: {tickers_to_fetch[:5]}...")
+        else:
+            print(f"Proceeding with all {len(tickers_to_fetch)} fetched tickers: {tickers_to_fetch[:5]}...")
+    else:
+        print(f"Proceeding with the provided list of {len(tickers_to_fetch)} tickers: {tickers_to_fetch[:5]}...")
 
 
     financial_df = data_acquisition.get_financial_data(tickers_to_fetch, years=data_years)
