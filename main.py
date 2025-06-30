@@ -73,11 +73,32 @@ def run_full_workflow(tickers_to_fetch=None, data_years=5):
                                     x_test_path='X_test.csv',
                                     y_test_path='y_test.csv')
 
+    # --- Stage 5: Consistency Analysis ---
+    print("\n--- Stage 5: Consistency Analysis ---")
+    if processed_df is not None and not processed_df.empty:
+        print(f"Analyzing processed data from {processed_data_path} to find consistent performers...")
+
+        # Filter for only "High Quality" companies (where Quality == 1)
+        high_quality_df = processed_df[processed_df['Quality'] == 1]
+
+        if not high_quality_df.empty:
+            # Count how many years each ticker was rated as "High Quality"
+            consistency_counts = high_quality_df['Ticker'].value_counts().reset_index()
+            consistency_counts.columns = ['Ticker', 'Years as High Quality']
+
+            print("Companies ranked by the number of years they met the 'High Quality' criteria:")
+            print(consistency_counts)
+        else:
+            print("No companies met the 'High Quality' criteria in the dataset.")
+    else:
+        print("Skipping consistency analysis because processed data is not available.")
+
+
     print("\n--- Stock Quality Screener Workflow Completed ---")
 
 if __name__ == '__main__':
     # To run with a small sample of tickers and 5 years of data:
-    run_full_workflow(data_years=10)
+    run_full_workflow(data_years=5)
 
     # Example: To run with a specific list of tickers:
     # custom_tickers = ['T', 'VZ', 'PFE']
