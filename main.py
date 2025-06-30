@@ -77,7 +77,7 @@ def run_full_workflow(tickers_to_fetch=None, data_years=5):
 
 if __name__ == '__main__':
     # To run with a small sample of tickers and 5 years of data:
-    run_full_workflow(data_years=5)
+    run_full_workflow(data_years=10)
 
     # Example: To run with a specific list of tickers:
     # custom_tickers = ['T', 'VZ', 'PFE']
