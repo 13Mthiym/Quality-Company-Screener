@@ -16,6 +16,9 @@ def preprocess_data(input_csv_path='sp500_financial_data.csv',
     # --- 1. Handle Missing Data ---
     # Drop rows where any of the key financial metrics for criteria are missing
     initial_rows = len(df)
+    # Ensure 'Sector' and 'Company' are not part of the NA check if it's okay for them to be missing,
+    # or handle them separately if they are critical for every row.
+    # For now, assuming ROE, DE_Ratio, PE_Ratio are primary for quality criteria.
     metrics_for_na_check = ['ROE', 'DE_Ratio', 'PE_Ratio']
     df.dropna(subset=metrics_for_na_check, inplace=True)
     rows_after_na_drop = len(df)
@@ -57,12 +60,20 @@ def preprocess_data(input_csv_path='sp500_financial_data.csv',
     print(df['Quality'].value_counts(normalize=True) * 100)
 
     # --- 3. Select Features (X) and Target (y) ---
-    # Features for the model
+    # Features for the model (keeping only original financial metrics as per project objective)
+    # If 'Sector' or 'Company' were to be used as a feature, they would need to be added here
+    # and potentially one-hot encoded (for Sector) before model training.
     feature_columns = ['ROE', 'DE_Ratio', 'PE_Ratio']
-    # Columns to keep in the output file (including Ticker and Year for context if needed later)
-    output_columns = ['Ticker', 'Year', 'ROE', 'DE_Ratio', 'PE_Ratio', 'Quality']
 
-    processed_df = df[output_columns]
+    # Columns to keep in the output file (including Ticker, Year, Sector, and now Company for context)
+    output_columns = ['Ticker', 'Company', 'Year', 'ROE', 'DE_Ratio', 'PE_Ratio', 'Sector', 'Quality'] # Added 'Company' here
+
+    # Filter columns to only include those that actually exist in the DataFrame
+    # This handles cases where 'Sector' or 'Company' might be missing in a fallback data scenario,
+    # or if the scraping source changes unexpectedly.
+    existing_output_columns = [col for col in output_columns if col in df.columns]
+    processed_df = df[existing_output_columns]
+
 
     # --- 4. Save Processed Data ---
     try:
@@ -85,7 +96,13 @@ if __name__ == '__main__':
         print("\nProcessed DataFrame info:")
         processed_dataframe.info()
         print("\nDescriptive statistics of processed data:")
-        print(processed_dataframe[['ROE', 'DE_Ratio', 'PE_Ratio']].describe())
+        # Adjust describe to only include numeric columns for valid output
+        numeric_cols_for_describe = ['ROE', 'DE_Ratio', 'PE_Ratio', 'Quality']
+        existing_numeric_cols = [col for col in numeric_cols_for_describe if col in processed_dataframe.columns]
+        if existing_numeric_cols:
+            print(processed_dataframe[existing_numeric_cols].describe())
+        else:
+            print("No numeric columns available for descriptive statistics.")
     else:
         print("Data preprocessing failed or resulted in no data.")
 
