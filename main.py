@@ -18,14 +18,24 @@ def run_full_workflow(tickers_to_fetch=None, data_years=5):
 
     if tickers_to_fetch is None:
         # Default to a small sample for quicker execution
-        tickers_to_fetch = ['AAPL', 'MSFT', 'GOOGL', 'JPM', 'XOM', 'NEE', 'MMM', 'DIS', 'LLY', 'NVDA']
-        print(f"Proceeding with a sample of {len(tickers_to_fetch)} tickers: {tickers_to_fetch[:5]}...")
+        # Note: This fallback list should ideally also provide sectors and companies
+        # but for quick testing, a simple ticker list can be sufficient here if get_financial_data handles it.
+        # For full run, the get_sp500_tickers_and_sectors will provide the full DataFrame.
+        sample_tickers_data = {
+            'Ticker': ['AAPL', 'MSFT', 'GOOGL', 'JPM', 'XOM', 'NEE', 'MMM', 'DIS', 'LLY', 'NVDA'],
+            'Sector': ['Technology'] * 10, # Placeholder sectors for sample if needed
+            'Company': ['Apple Inc.', 'Microsoft Corp.', 'Alphabet Inc. (Class A)', 'JPMorgan Chase & Co.', 'Exxon Mobil Corp.', 'NextEra Energy Inc.', '3M Company', 'The Walt Disney Company', 'Eli Lilly and Company', 'NVIDIA Corp.']
+        }
+        tickers_to_fetch_df = pd.DataFrame(sample_tickers_data)
+        print(f"Proceeding with a sample of {len(tickers_to_fetch_df)} tickers...")
+    else:
+        # If tickers_to_fetch is provided (e.g., from get_sp500_tickers_and_sectors), it's already a DataFrame
+        tickers_to_fetch_df = tickers_to_fetch
 
-    #  --- THIS IS THE CORRECTED LINE ---
-    # Unpack the returned tuple into two distinct variables
-    financial_df, failed_list = data_acquisition.get_financial_data(tickers_to_fetch, years=data_years)
 
-    # Now the rest of the code will work correctly
+    # Call the financial data acquisition function, passing the DataFrame
+    financial_df, failed_list = data_acquisition.get_financial_data(tickers_to_fetch_df, years=data_years)
+
     if financial_df is None or financial_df.empty:
         print("Data acquisition failed or returned no data. Exiting workflow.")
         return
@@ -90,8 +100,10 @@ if __name__ == '__main__':
 
     # Example: To attempt a full S&P 500 run (can be time-consuming):
     print("\n--- Attempting Full S&P 500 Run (may take a long time) ---")
-    all_sp500_tickers = data_acquisition.get_sp500_tickers()
-    if all_sp500_tickers:
-       run_full_workflow(tickers_to_fetch=all_sp500_tickers, data_years=10)
+    # Corrected function call: data_acquisition.get_sp500_tickers() changed to
+    # data_acquisition.get_sp500_tickers_and_sectors()
+    all_sp500_data_df = data_acquisition.get_sp500_tickers_and_sectors() # Renamed variable for clarity
+    if all_sp500_data_df is not None and not all_sp500_data_df.empty:
+       run_full_workflow(tickers_to_fetch=all_sp500_data_df, data_years=10)
     else:
-       print("Could not fetch S&P 500 ticker list for full run.")
+       print("Could not fetch S&P 500 ticker list for full run. Exiting.")
