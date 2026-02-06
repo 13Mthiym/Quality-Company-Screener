@@ -1,0 +1,7 @@
+pandas
+yfinance
+scikit-learn
+matplotlib
+seaborn
+requests-cache
+lxml
